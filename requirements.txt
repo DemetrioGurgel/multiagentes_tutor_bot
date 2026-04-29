@@ -1,0 +1,7 @@
+python-telegram-bot
+openai-whisper
+gtts
+pydub
+ffmpeg
+google-generativeai
+python-dotenv
