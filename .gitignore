@@ -1,0 +1,20 @@
+# ambiente virtual
+venv/
+.venv/
+
+# arquivos de ambiente (tokens)
+.env
+
+# cache python
+__pycache__/
+*.pyc
+
+# arquivos de áudio gerados
+*.mp3
+*.ogg
+
+# logs
+*.log
+
+# MacOS
+.DS_Store
