@@ -1,7 +1,12 @@
 python-telegram-bot
 openai-whisper
+openai
 gtts
 pydub
 ffmpeg
 google-generativeai
 python-dotenv
+langchain
+langchain-core
+langchain_community
+langchain-google-genai
