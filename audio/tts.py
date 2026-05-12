@@ -27,7 +27,7 @@ def extract_english_part(text):
             english_lines.append(line.strip())
 
     if not english_lines:
-        return "Let's keep practicing English!"
+        return "Let's practice English!"
 
     return " ".join(english_lines)
 

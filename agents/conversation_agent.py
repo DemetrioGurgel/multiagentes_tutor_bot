@@ -3,7 +3,7 @@ from openai import OpenAI
 from langchain_core.prompts import PromptTemplate
 from langchain_core.messages import HumanMessage, AIMessage
 
-from memory.user_memory import get_memory
+from memory.user_memory import get_memory, get_user_context
 
 import os
 from dotenv import load_dotenv
@@ -20,7 +20,7 @@ client = OpenAI(
 
 # Prompt principal
 prompt = PromptTemplate(
-    input_variables=["user_input"],
+    input_variables=["user_input", "user_context"],
     template="""
     Você é um tutor de inglês conversacional para brasileiros.
 
@@ -28,6 +28,9 @@ prompt = PromptTemplate(
     Seu objetivo principal é manter uma conversa natural, leve e fluida enquanto ajuda o aluno a melhorar o inglês gradualmente.
 
     O aluno deve sentir que está conversando com uma pessoa amigável, e não com um corretor automático.
+
+    CONTEXTO DO USUÁRIO:
+    {user_context}
 
     REGRAS GERAIS:
     - Responda de forma curta e natural
@@ -59,20 +62,15 @@ prompt = PromptTemplate(
     - Evite respostas secas
     - Evite parecer um professor rígido
 
-    CORREÇÕES:
-    - Corrija apenas erros importantes
-    - Se a frase estiver compreensível, não force correções
-    - Corrija de forma natural e leve
-    - Nunca humilhe ou critique o usuário
-    - Se o usuário escrever em português, traduza naturalmente para inglês
-    - Sempre incentive o uso do inglês de forma leve e natural
-
     MEMÓRIA E CONTEXTO:
     - Use o contexto recente da conversa
-    - Nunca diga explicitamente que está usando memória
-    - Nunca explique contexto anterior
+    - Use informações do perfil do usuário (nível, objetivos) para personalizar a conversa
+    - Traga naturalmente assuntos relacionados aos interesses do usuário quando fizer sentido
+    - Nunca diga explicitamente que está usando memória ou perfil
+    - Nunca explique contexto anterior de forma óbvia
     - Continue naturalmente o assunto atual quando fizer sentido
-    - Não ressuscite assuntos antigos sem necessidade
+    - Faça conexões leves com tópicos anteriores se houver relação natural
+    - Priorize o assunto atual, mas use o contexto para enriquecer a conversa
 
     ESTILO IDEAL:
     - Conversa parecida com um amigo paciente ajudando no inglês
@@ -92,21 +90,21 @@ prompt = PromptTemplate(
 
     Resposta:
     EN: Nice! What is your favorite car?
-    PT: Forma natural para conversar sobre gostos.
+    PT: Legal! Qual é seu carro favorito?
 
     Usuário:
     Me too!
 
     Resposta:
     EN: That's cool! What cars do you like most?
-    PT: Resposta natural para continuar a conversa.
+    PT: Que legal! Quais carros você gosta mais?
 
     Usuário:
     Qual carro você gosta?
 
     Resposta:
     EN: I like electric cars. What about you?
-    PT: Tradução natural para inglês.
+    PT: Eu gosto de carros elétricos. E você?
 
     Usuário:
     I did a travel
@@ -114,15 +112,73 @@ prompt = PromptTemplate(
     Resposta:
     EN: I took a trip.
     PT: Usamos "take a trip" em inglês.
+
+    Usuário (contexto: usuário gosta de carros):
+    I like soccer
+
+    Resposta:
+    EN: Soccer is fun! Do you also like watching car races?
+    PT: Futebol é divertido! Você também gosta de assistir corridas de carro?
+
+    Usuário (contexto: nível intermediário, objetivo trabalho):
+    I need practice presentation
+
+    Resposta:
+    EN: Great! Presentations are important for work. What topic do you want to present?
+    PT: Ótimo! Apresentações são importantes para o trabalho. Qual tópico você quer apresentar?
     """
 )
 
 
+def extract_recent_topics(memory, max_messages=5):
+    """Extrai tópicos recentes da conversa para enriquecer o contexto"""
+    recent_messages = memory.messages[-max_messages:]
+    topics = []
+    
+    for msg in recent_messages:
+        if isinstance(msg, HumanMessage):
+            content = msg.content.lower()
+            # Identificar tópicos comuns
+            if any(word in content for word in ['car', 'cars', 'drive', 'driving']):
+                topics.append('cars')
+            if any(word in content for word in ['travel', 'trip', 'vacation']):
+                topics.append('travel')
+            if any(word in content for word in ['work', 'job', 'office']):
+                topics.append('work')
+            if any(word in content for word in ['food', 'eat', 'restaurant']):
+                topics.append('food')
+            if any(word in content for word in ['sport', 'sports', 'play']):
+                topics.append('sports')
+            if any(word in content for word in ['music', 'song', 'listen']):
+                topics.append('music')
+            if any(word in content for word in ['movie', 'film', 'watch']):
+                topics.append('movies')
+    
+    # Remover duplicatas e manter únicos
+    return list(set(topics))
+
+
 # Função principal
-def respond(text, user_id):
+def respond(text, user_id, user_context=""):
 
     # memória do usuário
     memory = get_memory(user_id)
+    
+    # contexto do perfil do usuário
+    profile_context = get_user_context(user_id)
+    
+    # extrair tópicos recentes da conversa
+    recent_topics = extract_recent_topics(memory)
+    topics_context = ""
+    if recent_topics:
+        topics_context = f"Recent conversation topics: {', '.join(recent_topics)}. "
+    
+    # combinar contextos
+    full_context = profile_context
+    if topics_context:
+        full_context += " " + topics_context
+    if user_context:
+        full_context += " " + user_context
 
 
     # mensagens da conversa
@@ -131,7 +187,8 @@ def respond(text, user_id):
 
     # system prompt
     system_prompt = prompt.format(
-        user_input=""
+        user_input="",
+        user_context=full_context
     )
 
 

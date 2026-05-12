@@ -26,13 +26,11 @@ Analise a frase:
 
 REGRAS:
 - Seja extremamente curto
-- Máximo 1 frase
-- Não use markdown
-- Não use emojis
+- Máximo 2 frases por seção
 - Não explique demais
 - Não seja robótico
 - Não repita a frase original desnecessariamente
-- Não corrija frases que já sejam compreensíveis e naturais
+- Não corrija frases que já sejam naturais
 
 COMPORTAMENTO:
 - Se for apenas uma saudação simples, responda:
@@ -42,12 +40,13 @@ COMPORTAMENTO:
 "Frase correta."
 
 - Se houver erro gramatical importante:
-mostre apenas a correção natural em inglês
+mostre a correção natural em inglês E dê uma dica prática sobre construção frasal
 
 - Expressões curtas naturais como "Me too", "Nice", "Cool", "Really?" devem ser consideradas corretas
 
 FORMATO:
-CORRECTION: texto
+CORRECTION: [texto de correção ou "Frase correta."]
+TIP: [dica de construção frasal se houver erro, senão deixe em branco]
 
 EXEMPLOS:
 
@@ -56,18 +55,28 @@ hello
 
 Saída:
 CORRECTION: Saudação simples correta.
+TIP: 
 
 Entrada:
 i did a travel
 
 Saída:
 CORRECTION: I took a trip.
+TIP: Use "take a trip" em vez de "do a travel" - "take" é mais natural para viagens.
 
 Entrada:
 I'd like to speak about cars
 
 Saída:
 CORRECTION: Frase correta.
+TIP: 
+
+Entrada:
+She go to school
+
+Saída:
+CORRECTION: She goes to school.
+TIP: Com third person (she, he, it), adicione -s ao verbo no presente simples.
 """
 )
 
@@ -95,6 +104,7 @@ def correct(text):
 
 
     correction = ""
+    tip = ""
 
 
     # extrai resposta
@@ -107,10 +117,20 @@ def correct(text):
                 ""
             ).strip()
 
+        elif line.startswith("TIP:"):
+
+            tip = line.replace(
+                "TIP:",
+                ""
+            ).strip()
+
 
     # fallback
     if not correction:
         correction = "Frase compreensível."
 
-
-    return correction
+    # Combinar correção e dica
+    if tip:
+        return f"{correction} {tip}"
+    else:
+        return correction
